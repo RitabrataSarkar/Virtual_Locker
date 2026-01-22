@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const mongoUri = "mongodb+srv://admin:admin123@cluster0.4eexsyv.mongodb.net/file-manager?retryWrites=true&w=majority&appName=Cluster0";
+const mongoUri = "mongodb://127.0.0.1:27017/file-manager";
 
 console.log('Connecting to MongoDB...');
 mongoose.connect(mongoUri).then(async () => {

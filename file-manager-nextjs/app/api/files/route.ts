@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
             const folderId = searchParams.get('folderId');
             const search = searchParams.get('search');
 
-            let query: any = {
+            const query: any = {
                 userId: user.userId,
                 isDeleted: false,
             };
