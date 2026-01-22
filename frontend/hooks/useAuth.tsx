@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Fetch current user
     const fetchCurrentUser = async (authToken: string) => {
         try {
-            const response = await axios.get<AuthResponse>('/api/auth/me', {
+            const response = await axios.get<AuthResponse>(API_ENDPOINTS.AUTH_ME, {
                 headers: { Authorization: `Bearer ${authToken}` },
             });
 

@@ -2,7 +2,60 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, verifyToken } = require('../middleware/auth');
+
+// @route   GET /api/auth/me
+// @desc    Get current user from token
+// @access  Private
+router.get('/me', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                success: false,
+                message: 'No token provided'
+            });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = verifyToken(token);
+
+        if (!decoded) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid or expired token'
+            });
+        }
+
+        const user = await User.findById(decoded.userId).select('-password');
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            user: {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            }
+        });
+    } catch (error) {
+        console.error('Get current user error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get user',
+            error: error.message
+        });
+    }
+});
 
 // @route   POST /api/auth/signup
 // @desc    Register a new user

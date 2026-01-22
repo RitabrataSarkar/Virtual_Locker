@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
     // Auth
     SIGNUP: `${API_URL}/api/auth/signup`,
     LOGIN: `${API_URL}/api/auth/login`,
+    AUTH_ME: `${API_URL}/api/auth/me`,
 
     // Files
     FILES: `${API_URL}/api/files`,
