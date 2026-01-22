@@ -1,0 +1,9 @@
+{
+    "buildCommand": "npm run build",
+    "framework": "nextjs",
+    "env": {
+        "MONGODB_URI": "@mongodb-uri",
+        "JWT_SECRET": "@jwt-secret",
+        "NODE_ENV": "production"
+    }
+}
