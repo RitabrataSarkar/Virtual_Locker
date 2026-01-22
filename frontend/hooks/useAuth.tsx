@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 import { User, AuthResponse } from '@/types/auth';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 interface AuthContextType {
     user: User | null;
@@ -55,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Login
     const login = async (username: string, password: string) => {
         try {
-            const response = await axios.post<AuthResponse>('/api/auth/login', {
+            const response = await axios.post<AuthResponse>(API_ENDPOINTS.LOGIN, {
                 username,
                 password,
             });
@@ -76,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Signup
     const signup = async (username: string, email: string, password: string) => {
         try {
-            const response = await axios.post<AuthResponse>('/api/auth/signup', {
+            const response = await axios.post<AuthResponse>(API_ENDPOINTS.SIGNUP, {
                 username,
                 email,
                 password,
