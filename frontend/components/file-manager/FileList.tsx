@@ -81,8 +81,11 @@ export function FileList({ files, folders, onFolderClick, onDownload, onDelete, 
         let ext = '';
         if (item.extension) {
             ext = item.extension.replace('.', '').toUpperCase();
+        } else if (item.originalName) {
+            // Fallback for existing files using originalName
+            ext = item.originalName.split('.').pop()?.toUpperCase() || '';
         } else {
-            // Fallback for existing files without extension field
+            // Last resort
             ext = item.name.split('.').pop()?.toUpperCase() || '';
         }
         return <Badge variant="outline" className="font-mono text-xs">{ext}</Badge>;

@@ -190,7 +190,11 @@ export default function DashboardPage() {
     // Rename
     const handleRename = async (fileId: string, newName: string) => {
         try {
-            await renameFile(fileId, newName);
+            // Find item to check if it is a folder
+            const item = [...files, ...folders].find(i => i._id === fileId) || (isSearching ? searchResults.find(i => i._id === fileId) : null);
+            const isFolder = item?.isFolder || false;
+
+            await renameFile(fileId, newName, isFolder);
             toast.success('Renamed successfully');
             loadFiles();
             fetchStorageStats(); // Refresh storage stats
@@ -203,7 +207,11 @@ export default function DashboardPage() {
     // Delete
     const handleDelete = async (fileId: string) => {
         try {
-            await deleteFile(fileId);
+            // Find item to check if it is a folder
+            const item = [...files, ...folders].find(i => i._id === fileId) || (isSearching ? searchResults.find(i => i._id === fileId) : null);
+            const isFolder = item?.isFolder || false;
+
+            await deleteFile(fileId, isFolder);
             toast.success('Deleted successfully');
             loadFiles();
             fetchStorageStats(); // Refresh storage stats
@@ -231,7 +239,11 @@ export default function DashboardPage() {
     // Move (Drag and Drop)
     const handleMove = async (fileId: string, targetFolderId: string | null) => {
         try {
-            await moveFile(fileId, targetFolderId);
+            // Find item to check if it is a folder
+            const item = [...files, ...folders].find(i => i._id === fileId) || (isSearching ? searchResults.find(i => i._id === fileId) : null);
+            const isFolder = item?.isFolder || false;
+
+            await moveFile(fileId, targetFolderId, isFolder);
             toast.success('Moved successfully');
             loadFiles();
             fetchStorageStats(); // Refresh storage stats

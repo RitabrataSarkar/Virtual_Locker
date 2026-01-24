@@ -97,6 +97,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
         const fileDoc = await File.create({
             name: path.basename(req.file.originalname, path.extname(req.file.originalname)),
             originalName: req.file.originalname,
+            extension: path.extname(req.file.originalname),
             size: req.file.size,
             mimeType: req.file.mimetype,
             path: `/uploads/${req.user.userId}/${req.file.filename}`,

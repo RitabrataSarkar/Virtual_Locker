@@ -27,13 +27,28 @@ export function useFiles() {
                 params.append('folderId', folderId);
             }
 
-            const response = await axios.get<FilesResponse>(`${API_ENDPOINTS.FILES}?${params.toString()}`, {
+            // 1. Files request
+            const filesPromise = axios.get<FilesResponse>(`${API_ENDPOINTS.FILES}?${params.toString()}`, {
                 headers: getHeaders(),
             });
 
+            // 2. Folders request
+            const folderParams = new URLSearchParams();
+            if (folderId && folderId !== 'root') {
+                folderParams.append('parentId', folderId);
+            }
+            const foldersPromise = axios.get<{ success: boolean; folders: FileItem[] }>(`${API_ENDPOINTS.FOLDERS}?${folderParams.toString()}`, {
+                headers: getHeaders(),
+            });
+
+            const [filesRes, foldersRes] = await Promise.all([filesPromise, foldersPromise]);
+
+            const folders = (foldersRes.data.folders || []).map(f => ({ ...f, isFolder: true }));
+            const files = (filesRes.data.files || []).map(f => ({ ...f, isFolder: false }));
+
             return {
-                files: response.data.files || [],
-                folders: response.data.folders || [],
+                files,
+                folders,
             };
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || 'Failed to load files';
@@ -53,7 +68,7 @@ export function useFiles() {
             const formData = new FormData();
             formData.append('file', file);
             if (parentId && parentId !== 'root') {
-                formData.append('parentId', parentId);
+                formData.append('folderId', parentId);
             }
 
             const response = await axios.post<UploadFileResponse>(API_ENDPOINTS.FILE_UPLOAD, formData, {
@@ -67,7 +82,7 @@ export function useFiles() {
                 throw new Error(response.data.message || 'Upload failed');
             }
 
-            return response.data.file;
+            return { ...response.data.file, isFolder: false };
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || 'Failed to upload file';
             setError(errorMessage);
@@ -96,7 +111,7 @@ export function useFiles() {
                 throw new Error(response.data.message || 'Failed to create folder');
             }
 
-            return response.data.folder;
+            return { ...response.data.folder, isFolder: true };
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || 'Failed to create folder';
             setError(errorMessage);
@@ -107,22 +122,16 @@ export function useFiles() {
     };
 
     // Delete file or folder
-    const deleteFile = async (fileId: string): Promise<void> => {
+    const deleteFile = async (id: string, isFolder: boolean = false): Promise<void> => {
         try {
             setLoading(true);
             setError(null);
 
-            // Determine if it's a file or folder deletion logic if applicable
-            // Assuming for now FILE_DELETE covers files. 
-            // The hook is generic 'deleteFile', but backend has separate /api/files/:id and /api/folders/:id ?
-            // Let's assume this is strictly for files based on FILE_DELETE
-            // If the user selects a folder, likely a different function or we need to check type.
-            // However, looking at original code: axios.delete(`/api/files/${fileId}`)
-            // So it was treating everything as a file?
-            // If we have folders, we might need a separate deleteFolder. 
-            // But let's stick to what was there: /api/files/${fileId} -> API_ENDPOINTS.FILE_DELETE(fileId)
+            const endpoint = isFolder
+                ? API_ENDPOINTS.FOLDER_DELETE(id)
+                : API_ENDPOINTS.FILE_DELETE(id);
 
-            await axios.delete(API_ENDPOINTS.FILE_DELETE(fileId), {
+            await axios.delete(endpoint, {
                 headers: getHeaders(),
             });
         } catch (err: any) {
@@ -135,25 +144,29 @@ export function useFiles() {
     };
 
     // Rename file or folder
-    const renameFile = async (fileId: string, newName: string): Promise<FileItem> => {
+    const renameFile = async (id: string, newName: string, isFolder: boolean = false): Promise<FileItem> => {
         try {
             setLoading(true);
             setError(null);
 
-            // Backend expects PUT, not PATCH
+            const endpoint = isFolder
+                ? API_ENDPOINTS.FOLDER_UPDATE(id)
+                : API_ENDPOINTS.FILE_RENAME(id);
+
             const response = await axios.put(
-                API_ENDPOINTS.FILE_RENAME(fileId),
+                endpoint,
                 { name: newName },
                 {
                     headers: getHeaders(),
                 }
             );
 
-            if (!response.data.success || !response.data.file) {
+            if (!response.data.success || (!response.data.file && !response.data.folder)) {
                 throw new Error(response.data.message || 'Failed to rename');
             }
 
-            return response.data.file;
+            const item = isFolder ? response.data.folder : response.data.file;
+            return { ...item, isFolder };
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || 'Failed to rename';
             setError(errorMessage);
@@ -188,20 +201,18 @@ export function useFiles() {
     };
 
     // Move file to different folder
-    const moveFile = async (fileId: string, targetFolderId: string | null): Promise<FileItem> => {
+    const moveFile = async (id: string, targetFolderId: string | null, isFolder: boolean = false): Promise<FileItem> => {
         try {
             setLoading(true);
             setError(null);
 
-            // Backend expects PUT, not POST
+            if (isFolder) {
+                throw new Error("Moving folders is not yet supported");
+            }
+
             const response = await axios.put(
-                API_ENDPOINTS.FILE_MOVE(fileId),
-                { folderId: targetFolderId || 'root' }, // Backend expects 'folderId' in body, NOT 'targetFolderId'
-                // Wait, examining backend files.js:
-                // const { folderId } = req.body;
-                // Original code was: { targetFolderId: targetFolderId || 'root' }
-                // This means the original frontend code was sending 'targetFolderId' but backend wanted 'folderId'!
-                // I will fix this key name to 'folderId'
+                API_ENDPOINTS.FILE_MOVE(id),
+                { folderId: targetFolderId || 'root' },
                 {
                     headers: getHeaders(),
                 }
@@ -211,7 +222,7 @@ export function useFiles() {
                 throw new Error(response.data.message || 'Failed to move file');
             }
 
-            return response.data.file;
+            return { ...response.data.file, isFolder: false };
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || 'Failed to move file';
             setError(errorMessage);
@@ -239,10 +250,18 @@ export function useFiles() {
                 throw new Error(response.data.message || 'Search failed');
             }
 
+            // Ensure isFolder flag is set correctly on results
+            const files = (response.data.files || []).map((f: any) => ({ ...f, isFolder: false }));
+            const folders = (response.data.folders || []).map((f: any) => ({ ...f, isFolder: true }));
+            const results = (response.data.results || []).map((item: any) => ({
+                ...item,
+                isFolder: !!item.isFolder
+            }));
+
             return {
-                files: response.data.files || [],
-                folders: response.data.folders || [],
-                results: response.data.results || [],
+                files,
+                folders,
+                results
             };
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || 'Failed to search';

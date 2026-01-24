@@ -11,6 +11,10 @@ const FileSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        extension: {
+            type: String,
+            trim: true,
+        },
         size: {
             type: Number,
             required: true,
