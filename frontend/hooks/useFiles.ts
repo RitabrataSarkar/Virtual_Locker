@@ -4,6 +4,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { FileItem, FilesResponse, UploadFileResponse, CreateFolderRequest } from '@/types/file';
 import { useAuth } from './useAuth';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 export function useFiles() {
     const { token } = useAuth();
@@ -26,7 +27,7 @@ export function useFiles() {
                 params.append('folderId', folderId);
             }
 
-            const response = await axios.get<FilesResponse>(`/api/files?${params.toString()}`, {
+            const response = await axios.get<FilesResponse>(`${API_ENDPOINTS.FILES}?${params.toString()}`, {
                 headers: getHeaders(),
             });
 
@@ -55,7 +56,7 @@ export function useFiles() {
                 formData.append('parentId', parentId);
             }
 
-            const response = await axios.post<UploadFileResponse>('/api/files', formData, {
+            const response = await axios.post<UploadFileResponse>(API_ENDPOINTS.FILE_UPLOAD, formData, {
                 headers: {
                     ...getHeaders(),
                     'Content-Type': 'multipart/form-data',
@@ -82,12 +83,12 @@ export function useFiles() {
             setLoading(true);
             setError(null);
 
-            const data: CreateFolderRequest = {
-                name,
-                parentId: parentId && parentId !== 'root' ? parentId : null,
-            };
+            const data: any = { name };
+            if (parentId && parentId !== 'root') {
+                data.parentId = parentId;
+            }
 
-            const response = await axios.post('/api/folders', data, {
+            const response = await axios.post(API_ENDPOINTS.FOLDERS, data, {
                 headers: getHeaders(),
             });
 
@@ -111,7 +112,17 @@ export function useFiles() {
             setLoading(true);
             setError(null);
 
-            await axios.delete(`/api/files/${fileId}`, {
+            // Determine if it's a file or folder deletion logic if applicable
+            // Assuming for now FILE_DELETE covers files. 
+            // The hook is generic 'deleteFile', but backend has separate /api/files/:id and /api/folders/:id ?
+            // Let's assume this is strictly for files based on FILE_DELETE
+            // If the user selects a folder, likely a different function or we need to check type.
+            // However, looking at original code: axios.delete(`/api/files/${fileId}`)
+            // So it was treating everything as a file?
+            // If we have folders, we might need a separate deleteFolder. 
+            // But let's stick to what was there: /api/files/${fileId} -> API_ENDPOINTS.FILE_DELETE(fileId)
+
+            await axios.delete(API_ENDPOINTS.FILE_DELETE(fileId), {
                 headers: getHeaders(),
             });
         } catch (err: any) {
@@ -129,8 +140,9 @@ export function useFiles() {
             setLoading(true);
             setError(null);
 
-            const response = await axios.patch(
-                `/api/files/${fileId}`,
+            // Backend expects PUT, not PATCH
+            const response = await axios.put(
+                API_ENDPOINTS.FILE_RENAME(fileId),
                 { name: newName },
                 {
                     headers: getHeaders(),
@@ -154,7 +166,7 @@ export function useFiles() {
     // Download file
     const downloadFile = async (fileId: string, fileName: string): Promise<void> => {
         try {
-            const response = await axios.get(`/api/files/download/${fileId}`, {
+            const response = await axios.get(API_ENDPOINTS.FILE_DOWNLOAD(fileId), {
                 headers: getHeaders(),
                 responseType: 'blob',
             });
@@ -181,9 +193,15 @@ export function useFiles() {
             setLoading(true);
             setError(null);
 
-            const response = await axios.post(
-                `/api/files/${fileId}/move`,
-                { targetFolderId: targetFolderId || 'root' },
+            // Backend expects PUT, not POST
+            const response = await axios.put(
+                API_ENDPOINTS.FILE_MOVE(fileId),
+                { folderId: targetFolderId || 'root' }, // Backend expects 'folderId' in body, NOT 'targetFolderId'
+                // Wait, examining backend files.js:
+                // const { folderId } = req.body;
+                // Original code was: { targetFolderId: targetFolderId || 'root' }
+                // This means the original frontend code was sending 'targetFolderId' but backend wanted 'folderId'!
+                // I will fix this key name to 'folderId'
                 {
                     headers: getHeaders(),
                 }
@@ -213,7 +231,7 @@ export function useFiles() {
                 return { files: [], folders: [], results: [] };
             }
 
-            const response = await axios.get(`/api/search?q=${encodeURIComponent(query)}`, {
+            const response = await axios.get(API_ENDPOINTS.SEARCH(query), {
                 headers: getHeaders(),
             });
 

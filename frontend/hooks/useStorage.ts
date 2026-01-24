@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from './useAuth';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 export interface StorageStats {
     used: number;
@@ -27,16 +28,16 @@ export function useStorage() {
 
         try {
             setLoading(true);
-            const response = await axios.get('/api/storage', {
+            const response = await axios.get(API_ENDPOINTS.STORAGE, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            if (response.data.success) {
+            if (response.data.success && response.data.storage) {
                 setStorageStats({
-                    used: response.data.used,
-                    limit: response.data.limit,
-                    percentage: response.data.percentage,
-                    fileCount: response.data.fileCount
+                    used: response.data.storage.used,
+                    limit: response.data.storage.limit,
+                    percentage: parseFloat(response.data.storage.percentage),
+                    fileCount: response.data.storage.fileCount
                 });
             }
         } catch (err: any) {
